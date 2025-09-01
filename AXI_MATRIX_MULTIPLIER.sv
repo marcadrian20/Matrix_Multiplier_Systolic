@@ -16,8 +16,8 @@
 		parameter integer C_S00_AXIS_TDATA_WIDTH	= 32,
 
 		// Parameters of Axi Master Bus Interface M00_AXIS
-		parameter integer C_M00_AXIS_TDATA_WIDTH	= 32,
-		parameter integer C_M00_AXIS_START_COUNT	= 32
+		parameter integer C_M00_AXIS_TDATA_WIDTH	= 32
+		// parameter integer C_M00_AXIS_START_COUNT	= ARRAY_SIZE*ARRAY_SIZE //32
 
 //		// Parameters of Axi Slave Bus Interface S_AXI_INTR
 //		parameter integer C_S_AXI_INTR_DATA_WIDTH	= 32,
@@ -110,8 +110,8 @@
 // Instantiation of Axi Bus Interface M00_AXIS
 	AXI_MATRIX_MULTIPLIER_MASTER_OUTPUT_STREAM # ( 
 	    .ARRAY_SIZE(ARRAY_SIZE),
-		.C_M_AXIS_TDATA_WIDTH(C_M00_AXIS_TDATA_WIDTH),
-		.C_M_START_COUNT(C_M00_AXIS_START_COUNT)
+		.C_M_AXIS_TDATA_WIDTH(C_M00_AXIS_TDATA_WIDTH)
+		// .C_M_START_COUNT(C_M00_AXIS_START_COUNT)
 	) AXI_MATRIX_MULTIPLIER_MASTER_OUTPUT_STREAM_inst (
 		.systolic_busy(systolic_busy),
 		.systolic_done(systolic_done),

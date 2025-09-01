@@ -12,9 +12,9 @@
 		// Do not modify the parameters beyond this line
 
 		// Width of S_AXIS address bus. The slave accepts the read and write addresses of width C_M_AXIS_TDATA_WIDTH.
-		parameter integer C_M_AXIS_TDATA_WIDTH	= 32,
+		parameter integer C_M_AXIS_TDATA_WIDTH	= 32
 		// Start count is the number of clock cycles the master will wait before initiating/issuing any transaction.
-		parameter integer C_M_START_COUNT	= 32
+		// parameter integer C_M_START_COUNT	= ARRAY_SIZE*ARRAY_SIZE //32
 	)
 	(
 		// Users to add ports here
@@ -41,7 +41,8 @@
 		input wire  M_AXIS_TREADY
 	);
 	// Total number of output data                                                 
-	localparam NUMBER_OF_OUTPUT_WORDS = 8;                                               
+	localparam NUMBER_OF_OUTPUT_WORDS = ARRAY_SIZE*ARRAY_SIZE;       
+	localparam C_M_START_COUNT	= ARRAY_SIZE*ARRAY_SIZE;                                        
 	                                                                                     
 	// function called clogb2 that returns an integer which has the                      
 	// value of the ceiling of the log base 2.                                           
@@ -97,6 +98,7 @@
 //    reg [bit_num-1:0] result_collect_counter;
     reg systolic_done_prev;
     reg results_ready;
+	logic [bit_num-1:0] fifo_load_index; //or rather a write pointer.
 	// I/O Connections assignments
 
 	assign M_AXIS_TVALID	= axis_tvalid_delay;
@@ -106,10 +108,44 @@
 
 
 
+	// always_ff @(posedge M_AXIS_ACLK) begin
+	// 	if (!M_AXIS_ARESETN) begin
+	// 		results_ready <= 1'b0;
+	// 		systolic_done_prev <= 1'b0;
+	// 		for (int i = 0; i < NUMBER_OF_OUTPUT_WORDS; i++) begin
+	// 			result_fifo[i] <= 32'h0;
+	// 		end
+	// 	end else begin
+	// 		systolic_done_prev <= systolic_done;
+			
+	// 		// Detect rising edge of systolic_done and capture results
+	// 		if (systolic_done && !systolic_done_prev) begin
+	// 			// Sign extend each 8-bit result to 32-bit and store in FIFO
+	// 			result_fifo[0] <= {{24{result_output_matrix[0][7]}}, result_output_matrix[0]}; // [0,0]
+	// 			result_fifo[1] <= {{24{result_output_matrix[1][7]}}, result_output_matrix[1]}; // [0,1]
+	// 			result_fifo[2] <= {{24{result_output_matrix[2][7]}}, result_output_matrix[2]}; // [1,0]
+	// 			result_fifo[3] <= {{24{result_output_matrix[3][7]}}, result_output_matrix[3]}; // [1,1]
+				
+	// 			// Fill remaining FIFO with zeros
+	// 			for (int i = 4; i < NUMBER_OF_OUTPUT_WORDS; i++) begin
+	// 				result_fifo[i] <= 32'h0;
+	// 			end
+				
+	// 			results_ready <= 1'b1;
+	// 		end
+			
+	// 		// Reset when transmission is done
+	// 		if (tx_done) begin
+	// 			results_ready <= 1'b0;
+	// 		end
+	// 	end
+	// end
+
 	always_ff @(posedge M_AXIS_ACLK) begin
 		if (!M_AXIS_ARESETN) begin
 			results_ready <= 1'b0;
 			systolic_done_prev <= 1'b0;
+			fifo_load_index<='0;
 			for (int i = 0; i < NUMBER_OF_OUTPUT_WORDS; i++) begin
 				result_fifo[i] <= 32'h0;
 			end
@@ -118,18 +154,14 @@
 			
 			// Detect rising edge of systolic_done and capture results
 			if (systolic_done && !systolic_done_prev) begin
-				// Sign extend each 8-bit result to 32-bit and store in FIFO
-				result_fifo[0] <= {{24{result_output_matrix[0][7]}}, result_output_matrix[0]}; // [0,0]
-				result_fifo[1] <= {{24{result_output_matrix[1][7]}}, result_output_matrix[1]}; // [0,1]
-				result_fifo[2] <= {{24{result_output_matrix[2][7]}}, result_output_matrix[2]}; // [1,0]
-				result_fifo[3] <= {{24{result_output_matrix[3][7]}}, result_output_matrix[3]}; // [1,1]
-				
-				// Fill remaining FIFO with zeros
-				for (int i = 4; i < NUMBER_OF_OUTPUT_WORDS; i++) begin
-					result_fifo[i] <= 32'h0;
-				end
-				
 				results_ready <= 1'b1;
+				fifo_load_index<='0;
+			end
+			if(mst_exec_state==INIT_COUNTER && fifo_load_index<NUMBER_OF_OUTPUT_WORDS) begin
+				// Sign extend each 8-bit result to 32-bit and store in FIFO
+				result_fifo[fifo_load_index] <= {{24{result_output_matrix[fifo_load_index][7]}}, result_output_matrix[fifo_load_index]}; // [0,0]
+				
+				fifo_load_index<=fifo_load_index+1'b1;
 			end
 			
 			// Reset when transmission is done

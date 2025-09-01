@@ -5,7 +5,7 @@ module tb_axi_matrix_multiplier;
     parameter DATA_WIDTH = 8;
     parameter C_S00_AXIS_TDATA_WIDTH = 32;
     parameter C_M00_AXIS_TDATA_WIDTH = 32;
-    parameter C_M00_AXIS_START_COUNT = 32;
+    // parameter C_M00_AXIS_START_COUNT = ARRAY_SIZE*ARRAY_SIZE;
 //    parameter C_S_AXI_INTR_DATA_WIDTH = 32;
 //    parameter C_S_AXI_INTR_ADDR_WIDTH = 5;
 //    parameter C_NUM_OF_INTR = 1;
@@ -68,8 +68,8 @@ module tb_axi_matrix_multiplier;
         .ARRAY_SIZE(ARRAY_SIZE),
         .DATA_WIDTH(DATA_WIDTH),
         .C_S00_AXIS_TDATA_WIDTH(C_S00_AXIS_TDATA_WIDTH),
-        .C_M00_AXIS_TDATA_WIDTH(C_M00_AXIS_TDATA_WIDTH),
-        .C_M00_AXIS_START_COUNT(C_M00_AXIS_START_COUNT)
+        .C_M00_AXIS_TDATA_WIDTH(C_M00_AXIS_TDATA_WIDTH)
+        // .C_M00_AXIS_START_COUNT(C_M00_AXIS_START_COUNT)
 //        .C_S_AXI_INTR_DATA_WIDTH(C_S_AXI_INTR_DATA_WIDTH),
 //        .C_S_AXI_INTR_ADDR_WIDTH(C_S_AXI_INTR_ADDR_WIDTH),
 //        .C_NUM_OF_INTR(C_NUM_OF_INTR),
