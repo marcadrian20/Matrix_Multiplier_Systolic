@@ -4,7 +4,7 @@
 	module AXI_MATRIX_MULTIPLIER #
 	(
 		// Users to add parameters here
-        parameter ARRAY_SIZE = 2,
+        parameter ARRAY_SIZE = 8,
         // parameter INPUT_WIDTH = 32,
         parameter DATA_WIDTH = 8,
         parameter MAX_MATRICES=2,
@@ -50,7 +50,7 @@
     logic [(DATA_WIDTH * ARRAY_SIZE) - 1 : 0] MATRIX_B_ROW_FEED; 
     logic [clogb2(ARRAY_SIZE*MAX_MATRICES)-1:0]addr_matrix_A;
 	logic [clogb2(ARRAY_SIZE*MAX_MATRICES)-1:0]addr_matrix_B;
-	logic signed [7 : 0] result_output [(ARRAY_SIZE*ARRAY_SIZE)-1:0];
+	logic signed [(2 * DATA_WIDTH)-1 : 0] result_output [(ARRAY_SIZE*ARRAY_SIZE)-1:0];
 	logic start_systolic;
 	logic systolic_done;
 	logic systolic_busy;

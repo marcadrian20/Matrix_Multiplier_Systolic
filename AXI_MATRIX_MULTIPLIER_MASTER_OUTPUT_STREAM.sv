@@ -20,7 +20,7 @@
 		// Users to add ports here
 		input logic systolic_done,
 		input logic systolic_busy,
-		input logic signed [7 : 0] result_output_matrix [(ARRAY_SIZE*ARRAY_SIZE)-1:0],
+		input logic signed [(2 * DATA_WIDTH)-1 : 0] result_output_matrix [(ARRAY_SIZE*ARRAY_SIZE)-1:0],
 //		output logic results_ready,
 		// User ports ends
 		// Do not modify the ports beyond this line
@@ -43,7 +43,7 @@
 	// Total number of output data                                                 
 	localparam NUMBER_OF_OUTPUT_WORDS = ARRAY_SIZE*ARRAY_SIZE;       
 	localparam C_M_START_COUNT	= ARRAY_SIZE*ARRAY_SIZE;                                        
-	                                                                                     
+	localparam ACC_WIDTH= 2 * DATA_WIDTH;                                                                                     
 	// function called clogb2 that returns an integer which has the                      
 	// value of the ceiling of the log base 2.                                           
 	function integer clogb2 (input integer bit_depth);                                   
@@ -106,41 +106,6 @@
 	assign M_AXIS_TLAST	= axis_tlast_delay;
 	assign M_AXIS_TSTRB	= {(C_M_AXIS_TDATA_WIDTH/8){1'b1}};
 
-
-
-	// always_ff @(posedge M_AXIS_ACLK) begin
-	// 	if (!M_AXIS_ARESETN) begin
-	// 		results_ready <= 1'b0;
-	// 		systolic_done_prev <= 1'b0;
-	// 		for (int i = 0; i < NUMBER_OF_OUTPUT_WORDS; i++) begin
-	// 			result_fifo[i] <= 32'h0;
-	// 		end
-	// 	end else begin
-	// 		systolic_done_prev <= systolic_done;
-			
-	// 		// Detect rising edge of systolic_done and capture results
-	// 		if (systolic_done && !systolic_done_prev) begin
-	// 			// Sign extend each 8-bit result to 32-bit and store in FIFO
-	// 			result_fifo[0] <= {{24{result_output_matrix[0][7]}}, result_output_matrix[0]}; // [0,0]
-	// 			result_fifo[1] <= {{24{result_output_matrix[1][7]}}, result_output_matrix[1]}; // [0,1]
-	// 			result_fifo[2] <= {{24{result_output_matrix[2][7]}}, result_output_matrix[2]}; // [1,0]
-	// 			result_fifo[3] <= {{24{result_output_matrix[3][7]}}, result_output_matrix[3]}; // [1,1]
-				
-	// 			// Fill remaining FIFO with zeros
-	// 			for (int i = 4; i < NUMBER_OF_OUTPUT_WORDS; i++) begin
-	// 				result_fifo[i] <= 32'h0;
-	// 			end
-				
-	// 			results_ready <= 1'b1;
-	// 		end
-			
-	// 		// Reset when transmission is done
-	// 		if (tx_done) begin
-	// 			results_ready <= 1'b0;
-	// 		end
-	// 	end
-	// end
-
 	always_ff @(posedge M_AXIS_ACLK) begin
 		if (!M_AXIS_ARESETN) begin
 			results_ready <= 1'b0;
@@ -159,7 +124,7 @@
 			end
 			if(mst_exec_state==INIT_COUNTER && fifo_load_index<NUMBER_OF_OUTPUT_WORDS) begin
 				// Sign extend each 8-bit result to 32-bit and store in FIFO
-				result_fifo[fifo_load_index] <= {{24{result_output_matrix[fifo_load_index][7]}}, result_output_matrix[fifo_load_index]}; // [0,0]
+				result_fifo[fifo_load_index] <= {{(ACC_WIDTH-DATA_WIDTH){result_output_matrix[fifo_load_index][ACC_WIDTH-1]}}, result_output_matrix[fifo_load_index]}; // [0,0]
 				
 				fifo_load_index<=fifo_load_index+1'b1;
 			end

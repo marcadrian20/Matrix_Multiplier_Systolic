@@ -13,21 +13,10 @@ module Systolic_Array #(
     input logic [(DATA_WIDTH * ARRAY_SIZE) - 1 : 0] MATRIX_B_ROW,
     output logic [clogb2(ARRAY_SIZE*MAX_MATRICES)-1:0] addr_matrix_A, 
     output logic [clogb2(ARRAY_SIZE*MAX_MATRICES)-1:0] addr_matrix_B, 
-    output logic signed [7 : 0] result_output [(ARRAY_SIZE*ARRAY_SIZE)-1:0] 
+    output logic signed [(2*DATA_WIDTH)-1 : 0] result_output [(ARRAY_SIZE*ARRAY_SIZE)-1:0] 
 );
-logic signed [7:0] result1;
-logic signed [7:0] result2;
-logic signed [7:0] result3;
-logic signed [7:0] result4;
-logic signed [7:0] test_shifter;
-logic signed [7:0] test_shifter2;
-logic signed [7:0] test_shifter3;
-logic signed [7:0] test_shifter4;
 
-assign result1=result_output[0];
-assign result2=result_output[1];
-assign result3=result_output[2];
-assign result4=result_output[3];
+localparam ACC_WIDTH= 2 * DATA_WIDTH;
 
 typedef enum logic [2:0]{ 
     IDLE,
@@ -41,45 +30,43 @@ MULT_STATE_MACHINE current_state,next_state;
 
 logic weight_load_en;
 logic compute_en;
-logic signed [7:0]PE_ARRAY_input_A [ARRAY_SIZE-1:0][ARRAY_SIZE-1:0];
-logic signed [7:0]PE_ARRAY_input_B[ARRAY_SIZE-1:0][ARRAY_SIZE-1:0];
-logic signed [7:0]PE_ARRAY_output_A[ARRAY_SIZE-1:0][ARRAY_SIZE-1:0];
-logic signed [7:0]PE_ARRAY_output_B[ARRAY_SIZE-1:0][ARRAY_SIZE-1:0];
-logic signed [7:0] activation_feed[ARRAY_SIZE-1:0];
-logic signed [7:0] weight_feed[ARRAY_SIZE-1:0];
-reg [7:0] local_buffer [ARRAY_SIZE-1:0][ARRAY_SIZE-1:0];
-logic [$clog2(2*ARRAY_SIZE):0] slide_counter;
+logic signed [DATA_WIDTH-1:0]PE_ARRAY_input_A [ARRAY_SIZE-1:0][ARRAY_SIZE-1:0];
+logic signed [ACC_WIDTH-1:0]PE_ARRAY_input_B[ARRAY_SIZE-1:0][ARRAY_SIZE-1:0];
+logic signed [DATA_WIDTH-1:0]PE_ARRAY_output_A[ARRAY_SIZE-1:0][ARRAY_SIZE-1:0];
+logic signed [ACC_WIDTH-1:0]PE_ARRAY_output_B[ARRAY_SIZE-1:0][ARRAY_SIZE-1:0];
+logic signed [DATA_WIDTH-1:0] activation_feed[ARRAY_SIZE-1:0];
+logic signed [ACC_WIDTH-1:0] weight_feed[ARRAY_SIZE-1:0];
 logic [7:0] cycle_counter;
 logic [7:0] load_counter;
 generate 
     for (genvar i = 0; i < ARRAY_SIZE; i++) begin: gen_unpack
-        always_comb begin
-            if (current_state == COMPUTE) begin
-                if (cycle_counter >= i) begin
-                    if ((cycle_counter - i) < ARRAY_SIZE) begin
-                        activation_feed[i] = local_buffer[i][cycle_counter - i];
-                    end else begin
-                        activation_feed[i] = '0;
-                    end
-                end else begin
-                    activation_feed[i] = '0;
-                end
-            end else begin
-                activation_feed[i] = '0;
-            end
-        end
         assign weight_feed[i] = MATRIX_B_ROW[(i+1)*DATA_WIDTH-1: i*DATA_WIDTH];
+        if(i==0) begin
+            assign activation_feed[0]=(current_state==COMPUTE && compute_en)?MATRIX_A_COL[DATA_WIDTH-1:0]:'0;
+        end
+        else begin
+            logic signed [DATA_WIDTH-1:0] buffer [0:i-1];
+            always_ff @(posedge clk) begin
+                if(!rst_n) begin
+                    for(int j=0; j<i; j++) buffer[j]<='0;
+                end
+                else if(current_state==COMPUTE && compute_en) begin
+                    buffer[0]<=MATRIX_A_COL[(i+1)*DATA_WIDTH-1 -: DATA_WIDTH];
+                    for(int j=1; j<i; j++) buffer[j]<=buffer[j-1];
+                end
+                
+            end
+            assign activation_feed[i]=(current_state==COMPUTE && compute_en)?buffer[i-1]:'0;
+        end
     end
 endgenerate
-assign test_shifter=activation_feed[0];
-assign test_shifter2=activation_feed[1];
-
-
 
 generate
     for (genvar i = 0; i < ARRAY_SIZE; i++) begin: gen_row
         for (genvar j = 0; j < ARRAY_SIZE; j++) begin: gen_col
-            PE processing_element(
+            PE #(.DATA_WIDTH(DATA_WIDTH),
+                .ACC_WIDTH(ACC_WIDTH)
+                )processing_element(
                 .clk(clk),
                 .rst_n(rst_n),
                 .weight_load_en(weight_load_en),
@@ -103,7 +90,7 @@ always_comb begin
     for (int i = 0; i < ARRAY_SIZE; i++) begin
         for (int j = 0; j < ARRAY_SIZE; j++) begin
             if(weight_load_en) begin
-                PE_ARRAY_input_B[i][j]=(i==0)?weight_feed[j]:PE_ARRAY_output_B[i-1][j];
+                PE_ARRAY_input_B[i][j]=(i==0)?{{(ACC_WIDTH-DATA_WIDTH){weight_feed[j][DATA_WIDTH-1]}}, weight_feed[j]}:PE_ARRAY_output_B[i-1][j];
             end else begin
                 PE_ARRAY_input_B[i][j]=(i==0)?'0:PE_ARRAY_output_B[i-1][j];
             end
@@ -160,12 +147,12 @@ always_ff @(posedge clk) begin
         for (int j = 0; j <ARRAY_SIZE*ARRAY_SIZE; j++) begin
                     result_output[j] <= '0;
         end
-        for(int i=0; i<ARRAY_SIZE;i++) begin
-            for(int j=0; j<ARRAY_SIZE;j++) begin
-                local_buffer[i][j]<='0;
-            end
-        end
-        slide_counter<='0;
+        // for(int i=0; i<ARRAY_SIZE;i++) begin
+        //     for(int j=0; j<ARRAY_SIZE;j++) begin
+        //         local_buffer[i][j]<='0;
+        //     end
+        // end
+        // slide_counter<='0;
     end
     else begin
         case(current_state)
@@ -175,34 +162,24 @@ always_ff @(posedge clk) begin
                 // addr_matrix_B<=ARRAY_SIZE; this and incrementing the address were a simple workaround
                 addr_matrix_B<=2*ARRAY_SIZE-1'b1;
 
-                slide_counter<='0;
+                // slide_counter<='0;
                 
             end
             WEIGHT_LOAD: begin
                 busy          <= 1'b1;
                 weight_load_en<= 1'b1;
-                // if(load_counter < ARRAY_SIZE) begin
-                    for(int r=0; r<ARRAY_SIZE; r++) begin
-                        local_buffer[r][load_counter] <= MATRIX_A_COL[(r+1)*DATA_WIDTH-1 -: DATA_WIDTH];
-                        {test_shifter3,test_shifter4} <= MATRIX_A_COL;
-                    end
-                
-                if (load_counter < ARRAY_SIZE-1)
-                    addr_matrix_A <= addr_matrix_A + 1'b1;
-                // addr_matrix_B<=addr_matrix_B+1'b1;
                 addr_matrix_B<=addr_matrix_B-1'b1;
                 load_counter <= load_counter + 1'b1;
-
-                slide_counter <= '0;
             end
             ACTIVATION_LOAD: begin
                 weight_load_en <= '0;
-                // addr_matrix_A<=addr_matrix_A+1'b1;
+                addr_matrix_A<=addr_matrix_A+1'b1;
                 compute_en<='1;
             end
             COMPUTE: begin
-                if(slide_counter<(2*ARRAY_SIZE-1))
-                    slide_counter<=slide_counter+1'b1;
+                if (cycle_counter < ARRAY_SIZE)
+                    addr_matrix_A <= addr_matrix_A + 1'b1;
+
                 cycle_counter <= cycle_counter + 1'b1;
                 if (cycle_counter >= (ARRAY_SIZE + 1)) begin
                     int offset = cycle_counter - (ARRAY_SIZE + 1);
