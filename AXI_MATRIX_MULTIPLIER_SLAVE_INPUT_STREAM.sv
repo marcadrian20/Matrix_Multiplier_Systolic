@@ -205,15 +205,15 @@ module AXI_MATRIX_MULTIPLIER_SLAVE_INPUT_STREAM #
 	end
 	always_ff @(posedge S_AXIS_ACLK) begin
 		if (!S_AXIS_ARESETN) begin
-			// MATRIX_A_COL_FEED <= '0;
+			MATRIX_A_COL_FEED <= '0;
 			MATRIX_B_ROW_FEED <= '0;
 		end else begin 
-			// MATRIX_A_COL_FEED<=INPUT_BRAM[addr_matrix_A];
+			MATRIX_A_COL_FEED<=INPUT_BRAM[addr_matrix_A];
 			MATRIX_B_ROW_FEED<=INPUT_BRAM[addr_matrix_B];
 		end
 	end
 	// User logic ends
-		assign MATRIX_A_COL_FEED=INPUT_BRAM[addr_matrix_A];
+		// assign MATRIX_A_COL_FEED=INPUT_BRAM[addr_matrix_A];
 		// assign MATRIX_B_ROW_FEED=INPUT_BRAM[addr_matrix_B];
 	//#TODO pipeline the matrix a feed if needed, i can close timing at 100Mhz with enough headroom. The combinational path should be split for over 100 ig.
 	//#TODO Maybe remove the xilinx template comments?
